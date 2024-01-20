@@ -235,7 +235,9 @@ void ActivatePhaseAtIndexHook(UObject* SpecialEventScript, int Index)
                 auto Script = FindObject<UObject>("/Buffet/Levels/Buffet_Part_4.Buffet_Part_4.PersistentLevel.BP_Buffet_PhaseScripting_Paint_4");
                 auto PlayerStart = FindObject<AActor>("/Buffet/Levels/Buffet_Part_4.Buffet_Part_4:PersistentLevel.FortPlayerStart1");
 
-                Script->Get<UObject*>(Script->GetOffset("PawnLocation")) = PlayerStart;
+                auto SplineActor = Script->Get<AActor*>(Script->GetOffset("SplineActor"));
+
+                auto PawnLocation = Script->Get<AActor*>(Script->GetOffset("PawnLocation")) = SplineActor;
 
                 for (int i = 0; i < ClientConnections.Num(); i++)
                 {
@@ -253,10 +255,25 @@ void ActivatePhaseAtIndexHook(UObject* SpecialEventScript, int Index)
                     
                     PlayerComponent->Get<UObject*>(PlayerComponent->GetOffset("MovementComponent")) = MovementComponent;
                     PlayerComponent->Get<UObject*>(PlayerComponent->GetOffset("PhaseScripting")) = Script;
+                    PlayerComponent->ProcessEvent(PlayerComponent->FindFunction("SetMovementParameters"));
+                    MovementComponent->ProcessEvent(MovementComponent->FindFunction("SetSplineActor"), &SplineActor);
 
-                    bool Enabled = true;
+                    struct
+                    {
+                        bool bNewActive;
+                        bool bReset;
+                    }params;
+                    params.bNewActive = true;
+                    params.bReset = false;
+                    MovementComponent->ProcessEvent(MovementComponent->FindFunction("SetActive"), &params);
 
                     CurrentPawn->TeleportTo(PlayerStart->GetActorLocation(), PlayerStart->GetActorRotation());
+
+                    auto RacingPlayerMoveToActor = GetWorld()->SpawnActor<AActor>(FindObject<UClass>("/Buffet/Gameplay/Blueprints/WrapWorldPrototype/BP_Buffet_RacePlayerMoveToActor.BP_Buffet_RacePlayerMoveToActor_C"), CurrentPawn->GetActorLocation());
+
+                    RacingPlayerMoveToActor->ProcessEvent(RacingPlayerMoveToActor->FindFunction("SetOwningPawn"), &CurrentPawn);
+                    RacingPlayerMoveToActor->Get<bool>(RacingPlayerMoveToActor->GetOffset("bRaceStarted")) = true;
+                    RacingPlayerMoveToActor->Get<UObject*>(RacingPlayerMoveToActor->GetOffset("Phase3Scripting")) = Script;
                 }
             }
             if (Index == 3)
@@ -266,6 +283,18 @@ void ActivatePhaseAtIndexHook(UObject* SpecialEventScript, int Index)
                     auto CurrentPawn = ClientConnections.At(i)->GetPlayerController()->GetPawn();
                     auto CurrentController = ClientConnections.At(i)->GetPlayerController();
                     int StasisMode = 0;
+
+                    auto AllRacePlayers = UGameplayStatics::GetAllActorsOfClass(GetWorld(), FindObject<UClass>("/Buffet/Gameplay/Blueprints/WrapWorldPrototype/BP_Buffet_RacePlayerMoveToActor.BP_Buffet_RacePlayerMoveToActor_C"));
+
+                    for (int i = 0; i < AllRacePlayers.Num(); i++)
+                    {
+                        auto CurrentRacePlayer = AllRacePlayers.At(i);
+
+                        if (CurrentRacePlayer)
+                        {
+                            CurrentRacePlayer->K2_DestroyActor();
+                        }
+                    }
 
                     CurrentPawn->ProcessEvent(CurrentPawn->FindFunction("SetStasisMode"), &StasisMode);
                 }
