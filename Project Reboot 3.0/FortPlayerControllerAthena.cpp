@@ -132,6 +132,25 @@ void AFortPlayerControllerAthena::EndGhostModeHook(AFortPlayerControllerAthena* 
 	return EndGhostModeOriginal(PlayerController);
 }
 
+void AFortPlayerControllerAthena::ServerCreativeSetFlightSpeedIndexHook(UObject* Context, FFrame* Stack)
+{
+	int Index;
+	Stack->StepCompiledIn(&Index);
+
+	// LOG_INFO(LogDev, "Player {} wanting to change creative flight speed at index {}", Context->GetName(), Index);
+
+	auto WantedFlightSpeedChanged = FindObject<UFunction>("/Script/FortniteGame.FortPlayerControllerGameplay:OnRep_FlyingModifierIndex");
+
+	if (!WantedFlightSpeedChanged)
+	{
+		return;
+	}
+
+	Context->Get<int>(Context->GetOffset("FlyingModifierIndex")) = Index;
+
+	return Context->ProcessEvent(WantedFlightSpeedChanged);
+}
+
 void AFortPlayerControllerAthena::EnterAircraftHook(UObject* PC, AActor* Aircraft)
 {
 	auto PlayerController = Cast<AFortPlayerController>(Engine_Version < 424 ? PC : ((UActorComponent*)PC)->GetOwner());

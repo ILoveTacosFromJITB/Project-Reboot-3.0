@@ -1133,6 +1133,9 @@ DWORD WINAPI Main(LPVOID)
     Hooking::MinHook::Hook(FortPlayerControllerAthenaDefault, FindObject<UFunction>(L"/Script/FortniteGame.FortPlayerControllerAthena.ServerGiveCreativeItem"),
         AFortPlayerControllerAthena::ServerGiveCreativeItemHook, nullptr, true);
 
+    Hooking::MinHook::Hook(FindObject<UObject>("/Script/FortniteGame.Default__FortPlayerControllerGameplay"), FindObject<UFunction>(L"/Script/FortniteGame.FortPlayerControllerGameplay.ServerCreativeSetFlightSpeedIndex"),
+        AFortPlayerControllerAthena::ServerCreativeSetFlightSpeedIndexHook, nullptr, false, true);
+
     if (Fortnite_Version < 19) // its all screwed up idk
     {
         Hooking::MinHook::Hook(FortPlayerControllerAthenaDefault, FindObject<UFunction>(L"/Script/FortniteGame.FortPlayerControllerAthena.ServerPlaySquadQuickChatMessage"),
