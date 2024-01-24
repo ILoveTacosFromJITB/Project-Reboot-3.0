@@ -1472,6 +1472,42 @@ static inline void PregameUI()
 		
 	if (!Globals::bCreative)
 		ImGui::InputText("Playlist", &PlaylistName);
+
+#ifndef PROD
+	ImGui::NewLine();
+
+	static std::string ClassNameToDump;
+	static std::string FunctionNameToDump;
+	static std::string ObjectToDump;
+	static int Offset;
+	ImGui::InputText("Object to dump", &ObjectToDump);
+	ImGui::InputInt("Offset", &Offset);
+	ImGui::InputText("Function Name to mess with", &FunctionNameToDump);
+
+	if (ImGui::Button("Print Function Exec Addr"))
+	{
+		auto Function = FindObject<UFunction>(FunctionNameToDump);
+
+		if (Function)
+		{
+			LOG_INFO(LogDev, "{} Exec: 0x{:x}", Function->GetName(), __int64(Function->GetFunc()) - __int64(GetModuleHandleW(0)));
+		}
+	}
+
+	if (ImGui::Button("Print Address of Offset from VTable (use DefaultObject and Offset must be an Int)"))
+	{
+		auto ws = std::wstring(ObjectToDump.begin(), ObjectToDump.end()).c_str();
+
+		static auto defaultobject = FindObject(ws);
+
+		if (defaultobject)
+		{
+			auto VTable = defaultobject->VFTable[Offset / 8];
+
+			LOG_INFO(LogDev, "VTable+Offset Address 0x{:x}", __int64(VTable) - __int64(GetModuleHandleW(0)));
+		}
+	}
+#endif
 }
 
 static inline HICON LoadIconFromMemory(const char* bytes, int bytes_size, const wchar_t* IconName) {
