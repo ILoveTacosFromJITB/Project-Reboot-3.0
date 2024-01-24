@@ -1504,7 +1504,7 @@ static inline void PregameUI()
 		{
 			auto VTable = defaultobject->VFTable[Offset / 8];
 
-			LOG_INFO(LogDev, "VTable+Offset Address 0x{:x}", __int64(VTable) - __int64(GetModuleHandleW(0)));
+			LOG_INFO(LogDev, "VTable Offset Address 0x{:x}", __int64(VTable) - __int64(GetModuleHandleW(0)));
 		}
 	}
 #endif
