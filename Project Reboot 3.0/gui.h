@@ -1165,6 +1165,23 @@ static inline void MainUI()
 				bShouldDestroyAllPlayerBuilds = true;
 			}
 
+			if (ImGui::Button("Teleport all to Battle Royale map"))
+			{
+				auto ClientConnections = GetWorld()->GetNetDriver()->GetClientConnections();
+
+				for (int i = 0; i < ClientConnections.Num(); i++)
+				{
+					auto CurrentPawn = Cast<AFortPlayerPawnAthena>(ClientConnections.At(i)->GetPlayerController()->GetPawn());
+
+					CurrentPawn->TeleportTo(FVector{ 0,0,0 }, FRotator{ 0,0,0 });
+
+					float height = 2000;
+
+					CurrentPawn->ProcessEvent(CurrentPawn->FindFunction("TeleportToSkyDive"), &height);
+				}
+
+			}
+
 			if (ImGui::Button("Give Item to Everyone"))
 			{
 				auto ItemDefinition = FindObject<UFortItemDefinition>(ItemToGrantEveryone, nullptr, ANY_PACKAGE);

@@ -459,6 +459,70 @@ void TeleportPlayerPawnHook(UObject* Context, FFrame& Stack, void* Ret)
     return TeleportPlayerPawnOriginal(Context, Stack, Ret);
 }
 
+
+// Storm King Spawning, I might put this in its own class soon.
+bool bStormKingSpawned = false;
+static inline void (*DADBroOnGamephaseStepChangedOriginal)(UObject* Context, FFrame& Stack, void* Ret);
+void DADBroOnGamephaseStepChangedHook(UObject* Context, FFrame& Stack, void* Ret)
+{
+    auto GameState = Cast<AFortGameStateAthena>(GetWorld()->GetGameState());
+
+    if (!GameState)
+        return DADBroOnGamephaseStepChangedOriginal(Context, Stack, Ret);
+
+    FRotator Rotation;
+    Context->ProcessEvent(Context->FindFunction("GetDesiredDadBroRotation"), &Rotation);
+
+    if (GameState->GetGamePhaseStep() == EAthenaGamePhaseStep::StormShrinking && bStormKingSpawned == false)
+    {
+        auto StormKing = GetWorld()->SpawnActor<AActor>(FindObject<UClass>("/Game/Athena/DADBRO/DADBRO_Pawn.DADBRO_Pawn_C"), FVector{ 5150.0f, 4900.0f, -100.0f }, Rotation.Quaternion(), FVector{ 1,1,1 }, CreateSpawnParameters(ESpawnActorCollisionHandlingMethod::AlwaysSpawn));
+
+        if (StormKing)
+        {
+            bStormKingSpawned = true;
+            Context->Get<AActor*>(Context->GetOffset("DadBroPawn")) = StormKing;
+            Context->ProcessEvent(Context->FindFunction("OnRep_DadBroPawn"));
+        }
+        else
+        {
+            LOG_INFO(LogDev, "Failed to spawn StormKing!");
+        }
+    }
+
+    return DADBroOnGamephaseStepChangedOriginal(Context, Stack, Ret);
+}
+
+static void (*StartEventAtIndexOriginal)(UObject* Context, FFrame& Stack, void* Ret);
+void StartEventAtIndexHook(UObject* Context, FFrame& Stack, void* Ret)
+{
+    int32 InStartingIndex;
+    Stack.StepCompiledIn(&InStartingIndex);
+
+    if (Fortnite_Version == 17.50)
+    {
+        auto Scripting = FindObject<UObject>("/Kiwi/Levels/Kiwi_P.Kiwi_P:PersistentLevel.BP_Kiwi_Master_Scripting_2");
+        auto EventPlaylist = GetEventPlaylist();
+
+        struct { UObject* GameState; UObject* Playlist; FGameplayTagContainer PlaylistContextTags; } OnReadyParams{ Cast<AFortGameStateAthena>(GetWorld()->GetGameState()), EventPlaylist };
+        if (EventPlaylist)
+        {
+            static auto GameplayTagContainerOffset = EventPlaylist->GetOffset("GameplayTagContainer");
+            OnReadyParams.PlaylistContextTags = EventPlaylist->Get<FGameplayTagContainer>(GameplayTagContainerOffset);
+        }
+        else
+        {
+            OnReadyParams.PlaylistContextTags = FGameplayTagContainer();
+        }
+
+        Scripting->ProcessEvent(Scripting->FindFunction("OnReady_F1A32853487CB7603278E6847A5F2625"), &OnReadyParams);
+        Context->ProcessEvent(Context->FindFunction("LoadKiwiAssets"), &OnReadyParams);
+        Context->ProcessEvent(Context->FindFunction("BP_OnScriptReady"), &OnReadyParams);
+        Scripting->ProcessEvent(Scripting->FindFunction("startevent"), &InStartingIndex);
+    }
+
+    return StartEventAtIndexOriginal(Context, Stack, Ret);
+}
+
 static __int64 (*FlowStep_SetPhaseToActiveOriginal)(AActor* SpecialEventPhase);
 __int64 FlowStep_SetPhaseToActiveHook(AActor* SpecialEventPhase)
 {
@@ -541,13 +605,13 @@ void ChangeLevels()
     }
     else
     {
+        if (FindGIsServer())
+        {
+            *(bool*)FindGIsServer() = true;
+        }
+
         if (Fortnite_Version != 18.10)
         {
-            if (FindGIsServer())
-            {
-                *(bool*)FindGIsServer() = true;
-            }
-
             if (FindGIsClient())
             {
                 *(bool*)FindGIsClient() = false;
@@ -789,6 +853,11 @@ DWORD WINAPI Main(LPVOID)
         {
             Hooking::MinHook::Hook(FindObject<UObject>("/Script/FortniteGame.Default__FortMissionLibrary"), FindObject<UFunction>(L"/Script/FortniteGame.FortMissionLibrary:TeleportPlayerPawn"), TeleportPlayerPawnHook,
                 (PVOID*)&TeleportPlayerPawnOriginal, false, true);
+        }
+        if (Fortnite_Version == 17.50)
+        {
+            Hooking::MinHook::Hook(FindObject<UObject>("/Script/SpecialEventGameplayRuntime.Default__SpecialEventScript"), FindObject<UFunction>(L"/Script/SpecialEventGameplayRuntime.SpecialEventScript:StartEventAtIndex"), StartEventAtIndexHook,
+                (PVOID*)&StartEventAtIndexOriginal, false, true);
         }
     }
 
@@ -1114,6 +1183,8 @@ DWORD WINAPI Main(LPVOID)
         AFortAthenaMutator_Disco::OnGamePhaseStepChangedHook, (PVOID*)&AFortAthenaMutator_Disco::OnGamePhaseStepChangedOriginal, false, true);
     Hooking::MinHook::Hook(FindObject<AFortAthenaMutator_GiveItemsAtGamePhaseStep>(L"/Script/FortniteGame.Default__FortAthenaMutator_GiveItemsAtGamePhaseStep"), FindObject<UFunction>(L"/Script/FortniteGame.FortAthenaMutator_GiveItemsAtGamePhaseStep.OnGamePhaseStepChanged"),
         AFortAthenaMutator_GiveItemsAtGamePhaseStep::OnGamePhaseStepChangedHook, (PVOID*)&AFortAthenaMutator_GiveItemsAtGamePhaseStep::OnGamePhaseStepChangedOriginal, false, true);
+    Hooking::MinHook::Hook(FindObject<UObject>(L"/Script/FortniteGame.Default__FortAthenaMutator_DadBro"), FindObject<UFunction>(L"/Script/FortniteGame.FortAthenaMutator_DadBro:OnGamePhaseStepChanged"),
+        DADBroOnGamephaseStepChangedHook, (PVOID*)&DADBroOnGamephaseStepChangedOriginal, false, true);
 
     Hooking::MinHook::Hook(FortKismetLibraryDefault, FindObject<UFunction>(L"/Script/FortniteGame.FortKismetLibrary.GetAIDirector"),
         UFortKismetLibrary::GetAIDirectorHook, (PVOID*)&UFortKismetLibrary::GetAIDirectorOriginal, false, true);
