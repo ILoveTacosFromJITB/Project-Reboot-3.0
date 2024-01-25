@@ -1513,7 +1513,7 @@ static inline void PregameUI()
 		}
 	}
 
-	if (ImGui::Button("Print Address of Offset from VTable (use DefaultObject and Offset must be an Int)"))
+	if (ImGui::Button("Print Address of Offset from VTable"))
 	{
 		auto ws = std::wstring(ObjectToDump.begin(), ObjectToDump.end()).c_str();
 
