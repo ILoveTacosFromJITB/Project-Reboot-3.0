@@ -1051,6 +1051,25 @@ static inline void MainUI()
 				}
 			}
 
+			if (ImGui::Button("Dump Functions"))
+			{
+				std::ofstream FunctionsFile("Functions.txt");
+
+				static auto FunctionsClass = FindObject<UClass>("/Script/CoreUObject.Function");
+
+				auto AllFunctions = GetAllObjectsOfClass(FunctionsClass);
+
+				for (int i = 0; i < AllFunctions.size(); i++)
+				{
+					auto CurrentFunction = AllFunctions.at(i);
+
+					if (CurrentFunction != nullptr)
+					{
+						FunctionsFile << CurrentFunction->GetFullName() << '\n';
+					}
+				}
+			}
+
 			if (ImGui::Button("Dump Skins (Skins.txt)"))
 			{
 				std::ofstream SkinsFile("Skins.txt");
@@ -1480,9 +1499,9 @@ static inline void PregameUI()
 	static std::string FunctionNameToDump;
 	static std::string ObjectToDump;
 	static int Offset;
-	ImGui::InputText("Object to dump", &ObjectToDump);
+	ImGui::InputText("DefaultObject", &ObjectToDump);
 	ImGui::InputInt("Offset", &Offset);
-	ImGui::InputText("Function Name to mess with", &FunctionNameToDump);
+	ImGui::InputText("Function", &FunctionNameToDump);
 
 	if (ImGui::Button("Print Function Exec Addr"))
 	{
