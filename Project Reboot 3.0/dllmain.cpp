@@ -229,6 +229,21 @@ void ActivatePhaseAtIndexHook(UObject* SpecialEventScript, int Index)
                 {
                     AllSatelliteDishes.At(i)->K2_DestroyActor();
                 }
+
+                auto AllSpecialEventMutators = UGameplayStatics::GetAllActorsOfClass(GetWorld(), FindObject<UClass>("/Script/SpecialEventGameplayRuntime.FortAthenaMutator_SpecialEvent"));
+
+                for (int i = 0; i < AllSpecialEventMutators.Num(); i++)
+                {
+                    auto CurrentSpecialEventMutator = AllSpecialEventMutators.At(i);
+
+                    auto ScriptActor = CurrentSpecialEventMutator->Get<AActor*>(CurrentSpecialEventMutator->GetOffset("ScriptActor"));
+
+                    if (!ScriptActor)
+                    {
+                        ScriptActor = Cast<AActor>(GetEventScripting());
+                        LOG_INFO(LogEvent, "ScriptActor set for mutator: {}", CurrentSpecialEventMutator->GetName());
+                    }
+                }
             }
             if (Index == 2) // Slide
             {
@@ -242,17 +257,37 @@ void ActivatePhaseAtIndexHook(UObject* SpecialEventScript, int Index)
                     auto CurrentController = ClientConnections.At(i)->GetPlayerController();
                     auto PlayerComponent = CurrentPawn->AddComponentByClass(FindObject<UClass>("/Buffet/Gameplay/Blueprints/WrapWorldPrototype/BP_Buffet_Paint_PlayerComponent.BP_Buffet_Paint_PlayerComponent_C"));
                     auto MovementComponent = CurrentPawn->AddComponentByClass(FindObject<UClass>("/Buffet/Gameplay/Blueprints/WrapWorldPrototype/BP_Buffet_Paint_MovementComponent.BP_Buffet_Paint_MovementComponent_C"));
+
+                    PlayerComponent->Get<AActor*>(PlayerComponent->GetOffset("OwningPlayerController")) = CurrentController;
+
+                    struct
+                    {
+                        AActor* Pawn;
+                        AActor* ReturnValue;
+                    }wrapmanagerparams;
+                    wrapmanagerparams.Pawn = CurrentPawn;
+
+                    Script->ProcessEvent(Script->FindFunction("GetWrapManagerForPlayer"), &wrapmanagerparams);
+
+                    MovementComponent->Get<bool>(MovementComponent->GetOffset("bIsMovingAlongSpline")) = true;
+                    MovementComponent->Get<float>(MovementComponent->GetOffset("ReplicatedTotalSplineTime")) = 59.793846f;
+                    MovementComponent->Get<AActor*>(MovementComponent->GetOffset("TargetSplineActor")) = SplineActor;
+                    MovementComponent->ProcessEvent(MovementComponent->FindFunction("SetSplineActor"), &SplineActor);
+                    bool IsMoving = true;
+                    MovementComponent->ProcessEvent(MovementComponent->FindFunction("SetIsMovingAlongSpline"), &IsMoving);
+                    MovementComponent->Get<float>(MovementComponent->GetOffset("ReplicatedSplineInterpStrength")) = 1.3f;
+                    auto GameMode = (AFortGameMode*)GetWorld()->GetGameMode();
+                    auto GameState = Cast<AFortGameStateAthena>(GameMode->GetGameState());
+                    MovementComponent->Get<float>(MovementComponent->GetOffset("StartServerWorldTime")) = GameState->GetServerWorldTimeSeconds();
+
+                    MovementComponent->ProcessEvent(MovementComponent->FindFunction("OnRep_TargetSplineActor"));
+
+                    PlayerComponent->Get<AActor*>(PlayerComponent->GetOffset("WrapManager")) = wrapmanagerparams.ReturnValue;
                     
                     PlayerComponent->Get<UObject*>(PlayerComponent->GetOffset("MovementComponent")) = MovementComponent;
 
                     int StasisMode = 3;
                     CurrentPawn->ProcessEvent(CurrentPawn->FindFunction("SetStasisMode"), &StasisMode);
-
-                    auto RacingPlayerMoveToActor = GetWorld()->SpawnActor<AActor>(FindObject<UClass>("/Buffet/Gameplay/Blueprints/WrapWorldPrototype/BP_Buffet_RacePlayerMoveToActor.BP_Buffet_RacePlayerMoveToActor_C"), CurrentPawn->GetActorLocation());
-
-                    RacingPlayerMoveToActor->ProcessEvent(RacingPlayerMoveToActor->FindFunction("SetOwningPawn"), &CurrentPawn);
-                    RacingPlayerMoveToActor->Get<bool>(RacingPlayerMoveToActor->GetOffset("bRaceStarted")) = true;
-                    RacingPlayerMoveToActor->Get<UObject*>(RacingPlayerMoveToActor->GetOffset("Phase3Scripting")) = Script;
                 }
             }
             if (Index == 3)
