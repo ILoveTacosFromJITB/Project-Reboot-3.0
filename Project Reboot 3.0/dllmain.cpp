@@ -251,6 +251,43 @@ void ActivatePhaseAtIndexHook(UObject* SpecialEventScript, int Index)
                 auto SplineActor = Script->Get<AActor*>(Script->GetOffset("SplineActor"));
                 auto PawnLocation = Script->Get<AActor*>(Script->GetOffset("PawnLocation")) = SplineActor;
 
+                auto AllWrapsSpawners = UGameplayStatics::GetAllActorsOfClass(GetWorld(), FindObject<UClass>("/Script/SpecialEventGameplayRuntime.FortSpecialRelevancyActorSpawner"));
+
+                for (int i = 0; i < AllWrapsSpawners.Num(); i++)
+                {
+                    auto CurrentWrapSpawner = AllWrapsSpawners.At(i);
+
+                    if (CurrentWrapSpawner != nullptr)
+                    {
+                        auto WrapSpawnerLocation = CurrentWrapSpawner->GetActorLocation();
+                        auto WrapSpawnerRotation = CurrentWrapSpawner->GetActorRotation();
+                        UClass* ClassToSpawn = nullptr;
+
+                        if (CurrentWrapSpawner->GetName().contains("WrapChangePickup"))
+                        {
+                            ClassToSpawn = FindObject<UClass>("/Buffet/Gameplay/Blueprints/WrapWorldPrototype/BP_Buffet_Paint_WrapChangePickup.BP_Buffet_Paint_WrapChangePickup_C");
+                        }
+                        else if (CurrentWrapSpawner->GetName().contains("Paint_Pickup"))
+                        {
+                            ClassToSpawn = FindObject<UClass>("/Buffet/Gameplay/Blueprints/WrapWorldPrototype/BP_Buffet_Paint_Pickup.BP_Buffet_Paint_Pickup_C");
+                        }
+                        auto SpawnedWrap = GetWorld()->SpawnActor<AActor>(ClassToSpawn, WrapSpawnerLocation, WrapSpawnerRotation.Quaternion(), FVector(1, 1, 1), CreateSpawnParameters(ESpawnActorCollisionHandlingMethod::AlwaysSpawn, true, nullptr));
+
+                        if (SpawnedWrap)
+                        {
+                            LOG_INFO(LogDev, "Spawner Spawned a Wrap: {}", SpawnedWrap->GetName());
+                        }
+                        else
+                        {
+                            LOG_INFO(LogDev, "Spawner Failed to spawn a Wrap!");
+                        }
+                    }
+                    else
+                    {
+                        LOG_INFO(LogDev, "Spawner Invalid!");
+                    }
+                }
+
                 for (int i = 0; i < ClientConnections.Num(); i++)
                 {
                     auto CurrentPawn = ClientConnections.At(i)->GetPlayerController()->GetPawn();
@@ -298,18 +335,6 @@ void ActivatePhaseAtIndexHook(UObject* SpecialEventScript, int Index)
                     auto CurrentController = ClientConnections.At(i)->GetPlayerController();
                     int StasisMode = 0;
 
-                    auto AllRacePlayers = UGameplayStatics::GetAllActorsOfClass(GetWorld(), FindObject<UClass>("/Buffet/Gameplay/Blueprints/WrapWorldPrototype/BP_Buffet_RacePlayerMoveToActor.BP_Buffet_RacePlayerMoveToActor_C"));
-
-                    for (int i = 0; i < AllRacePlayers.Num(); i++)
-                    {
-                        auto CurrentRacePlayer = AllRacePlayers.At(i);
-
-                        if (CurrentRacePlayer)
-                        {
-                            CurrentRacePlayer->K2_DestroyActor();
-                        }
-                    }
-
                     CurrentPawn->ProcessEvent(CurrentPawn->FindFunction("SetStasisMode"), &StasisMode);
                 }
             }
@@ -351,6 +376,8 @@ void ActivatePhaseAtIndexHook(UObject* SpecialEventScript, int Index)
             }
             if (Index == 6) // Ariana
             {
+                auto ReflectScript = FindObject("/Buffet/Levels/Buffet_Reflect.Buffet_Reflect:PersistentLevel.BP_Buffet_PhaseScripting_Stars_2");
+
                 for (int i = 0; i < ClientConnections.Num(); i++)
                 {
                     auto CurrentPawn = ClientConnections.At(i)->GetPlayerController()->GetPawn();
@@ -361,10 +388,36 @@ void ActivatePhaseAtIndexHook(UObject* SpecialEventScript, int Index)
             }
             if (Index == 8) // Bubbles
             {
+                //auto BubbleScript = FindObject("/Buffet/Levels/Buffet_Bubbles.Buffet_Bubbles:PersistentLevel.BP_Buffet_PhaseScripting_Bubble_4");
+                //auto BubbleSpline = FindObject("/Buffet/Levels/Buffet_Bubbles.Buffet_Bubbles:PersistentLevel.BP_Buffet_SmallBubblePath_2.Spline");
+
                 for (int i = 0; i < ClientConnections.Num(); i++)
                 {
                     auto CurrentPawn = ClientConnections.At(i)->GetPlayerController()->GetPawn();
                     auto ComptoRemove = CurrentPawn->GetComponentByClass(FindObject<UClass>("/Buffet/Gameplay/Blueprints/Stars/BP_Buffet_Stars_PlayerComponent.BP_Buffet_Stars_PlayerComponent_C"));
+
+                    auto BubbleMovementComponent = CurrentPawn->AddComponentByClass(FindObject<UClass>("/Buffet/Gameplay/Blueprints/Bubble/BP_BubblePlayerMovementComponent.BP_BubblePlayerMovementComponent_C"));
+
+                    /*
+                    struct
+                    {
+                        UObject* InSplineComponent;
+                        float StartDistance;
+
+                    }SetSplineComponent;
+                    SetSplineComponent.StartDistance = 0;
+                    SetSplineComponent.InSplineComponent = BubbleSpline;
+
+                    // Works but too fast and player not in correct place on the spline.
+                    BubbleMovementComponent->ProcessEvent(BubbleMovementComponent->FindFunction("SetSplineComponent"), &SetSplineComponent);
+                    BubbleMovementComponent->Get<UObject*>(BubbleMovementComponent->GetOffset("SplineComponent")) = BubbleSpline;
+                    BubbleMovementComponent->Get<bool>(BubbleMovementComponent->GetOffset("bIsMovingAlongSpline")) = true;
+                    auto GameMode = (AFortGameMode*)GetWorld()->GetGameMode();
+                    auto GameState = Cast<AFortGameStateAthena>(GameMode->GetGameState());
+                    BubbleMovementComponent->Get<float>(BubbleMovementComponent->GetOffset("StartServerWorldTime")) = GameState->GetServerWorldTimeSeconds();
+                    bool IsMoving = true;
+                    BubbleMovementComponent->ProcessEvent(BubbleMovementComponent->FindFunction("SetIsMovingAlongSpline"), &IsMoving);
+                    */
 
                     CurrentPawn->ProcessEvent(CurrentPawn->FindFunction("K2_DestroyComponent"), &ComptoRemove);
                 }
