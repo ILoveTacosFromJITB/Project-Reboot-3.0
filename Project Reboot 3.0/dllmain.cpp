@@ -976,8 +976,6 @@ DWORD WINAPI Main(LPVOID)
         {
             Hooking::MinHook::Hook(FindObject<UObject>("/Script/FortniteGame.Default__FortMissionLibrary"), FindObject<UFunction>(L"/Script/FortniteGame.FortMissionLibrary:TeleportPlayerPawn"), TeleportPlayerPawnHook, (PVOID*)&TeleportPlayerPawnOriginal, false, true);
             //Hooking::MinHook::Hook((PVOID)(__int64(GetModuleHandleW(0)) + 0x49021F0), GetRelevantPawnGroupsHook, nullptr);
-            Hooking::MinHook::Hook(FindObject<UObject>("/Script/FortniteGame.Default__FortMissionLibrary"), FindObject<UFunction>(L"/Script/FortniteGame.FortMissionLibrary:TeleportPlayerPawn"), TeleportPlayerPawnHook,
-                (PVOID*)&TeleportPlayerPawnOriginal, false, true);
             // Todo hook UBuffetRacePlayerMovementComponent::ServerTeleportPlayer?
         }
         if (Fortnite_Version == 17.50)
