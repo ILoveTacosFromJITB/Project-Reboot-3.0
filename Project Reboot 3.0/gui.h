@@ -110,6 +110,11 @@ static inline void SetIsLategame(bool Value)
 	StartingShield = Value ? 100 : 0;
 }
 
+static inline bool HasAnyCalendarModification()
+{
+	return Calendar::HasSnowModification() || Calendar::HasNYE() || std::floor(Fortnite_Version) == 13;
+}
+
 static inline void Restart() // todo move?
 {
 	FString LevelA = Engine_Version < 424
@@ -378,7 +383,7 @@ static inline void MainTabs()
 			}
 		}
 
-		if (ImGui::BeginTabItem("Calendar Events"))
+		if (HasAnyCalendarModification() && ImGui::BeginTabItem("Calendar Events"))
 		{
 			Tab = CALENDAR_TAB;
 			PlayerTab = -1;
@@ -819,54 +824,7 @@ static inline void MainUI()
 							auto GameMode = (AFortGameMode*)GetWorld()->GetGameMode();
 							auto GameState = Cast<AFortGameStateAthena>(GameMode->GetGameState());
 
-							AmountOfPlayersWhenBusStart = GameState->GetPlayersLeft(); // scuffed!!!!
-
-							if (Fortnite_Version == 1.11)
-							{
-								static auto OverrideBattleBusSkin = FindObject(L"/Game/Athena/Items/Cosmetics/BattleBuses/BBID_WinterBus.BBID_WinterBus");
-								LOG_INFO(LogDev, "OverrideBattleBusSkin: {}", __int64(OverrideBattleBusSkin));
-
-								if (OverrideBattleBusSkin)
-								{
-									static auto AssetManagerOffset = GetEngine()->GetOffset("AssetManager");
-									auto AssetManager = GetEngine()->Get(AssetManagerOffset);
-
-									if (AssetManager)
-									{
-										static auto AthenaGameDataOffset = AssetManager->GetOffset("AthenaGameData");
-										auto AthenaGameData = AssetManager->Get(AthenaGameDataOffset);
-
-										if (AthenaGameData)
-										{
-											static auto DefaultBattleBusSkinOffset = AthenaGameData->GetOffset("DefaultBattleBusSkin");
-											AthenaGameData->Get(DefaultBattleBusSkinOffset) = OverrideBattleBusSkin;
-										}
-									}
-
-									static auto DefaultBattleBusOffset = GameState->GetOffset("DefaultBattleBus");
-									GameState->Get(DefaultBattleBusOffset) = OverrideBattleBusSkin;
-
-									static auto FortAthenaAircraftClass = FindObject<UClass>("/Script/FortniteGame.FortAthenaAircraft");
-									auto AllAircrafts = UGameplayStatics::GetAllActorsOfClass(GetWorld(), FortAthenaAircraftClass);
-
-									for (int i = 0; i < AllAircrafts.Num(); i++)
-									{
-										auto Aircraft = AllAircrafts.at(i);
-
-										static auto DefaultBusSkinOffset = Aircraft->GetOffset("DefaultBusSkin");
-										Aircraft->Get(DefaultBusSkinOffset) = OverrideBattleBusSkin;
-
-										static auto SpawnedCosmeticActorOffset = Aircraft->GetOffset("SpawnedCosmeticActor");
-										auto SpawnedCosmeticActor = Aircraft->Get<AActor*>(SpawnedCosmeticActorOffset);
-
-										if (SpawnedCosmeticActor)
-										{
-											static auto ActiveSkinOffset = SpawnedCosmeticActor->GetOffset("ActiveSkin");
-											SpawnedCosmeticActor->Get(ActiveSkinOffset) = OverrideBattleBusSkin;
-										}
-									}
-								}
-							}
+							AmountOfPlayersWhenBusStart = GameState->GetPlayersLeft();
 
 							static auto WarmupCountdownEndTimeOffset = GameState->GetOffset("WarmupCountdownEndTime");
 							// GameState->Get<float>(WarmupCountdownEndTimeOffset) = UGameplayStatics::GetTimeSeconds(GetWorld()) + 10;
@@ -1601,6 +1559,7 @@ static inline DWORD WINAPI GuiThread(LPVOID)
 	// Initialize Direct3D
 	if (!CreateDeviceD3D(hwnd))
 	{
+		LOG_ERROR(LogDev, "Failed to create D3D Device!");
 		CleanupDeviceD3D();
 		::UnregisterClass(wc.lpszClassName, wc.hInstance);
 		return 1;
