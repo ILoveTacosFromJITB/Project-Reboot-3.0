@@ -1544,7 +1544,7 @@ static inline void PregameUI()
 	{
 		auto ws = std::wstring(ObjectToDump.begin(), ObjectToDump.end()).c_str();
 
-		static auto defaultobject = FindObject(ws);
+		auto defaultobject = FindObject(ws);
 
 		if (defaultobject)
 		{

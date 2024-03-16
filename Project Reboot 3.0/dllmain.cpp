@@ -236,7 +236,7 @@ void ActivatePhaseAtIndexHook(UObject* SpecialEventScript, int Index)
                 {
                     auto CurrentSpecialEventMutator = AllSpecialEventMutators.At(i);
 
-                    auto ScriptActor = CurrentSpecialEventMutator->Get<AActor*>(CurrentSpecialEventMutator->GetOffset("ScriptActor"));
+                    auto& ScriptActor = CurrentSpecialEventMutator->Get<AActor*>(CurrentSpecialEventMutator->GetOffset("ScriptActor"));
 
                     if (!ScriptActor)
                     {
@@ -276,6 +276,11 @@ void ActivatePhaseAtIndexHook(UObject* SpecialEventScript, int Index)
                         if (SpawnedWrap)
                         {
                             LOG_INFO(LogDev, "Spawner Spawned a Wrap: {}", SpawnedWrap->GetName());
+
+                            if (SpawnedWrap->IsA(FindObject<UClass>("/Buffet/Gameplay/Blueprints/WrapWorldPrototype/BP_Buffet_Paint_Pickup.BP_Buffet_Paint_Pickup_C")))
+                            {
+                                SpawnedWrap->Get<UObject*>(SpawnedWrap->GetOffset("Spline Component")) = SplineActor->Get<UObject*>(SplineActor->GetOffset("Spline"));
+                            }
                         }
                         else
                         {
@@ -336,6 +341,11 @@ void ActivatePhaseAtIndexHook(UObject* SpecialEventScript, int Index)
                     int StasisMode = 0;
 
                     CurrentPawn->ProcessEvent(CurrentPawn->FindFunction("SetStasisMode"), &StasisMode);
+                    auto PaintMovementComponent = CurrentPawn->GetComponentByClass(FindObject<UClass>("/Buffet/Gameplay/Blueprints/WrapWorldPrototype/BP_Buffet_Paint_MovementComponent.BP_Buffet_Paint_MovementComponent_C"));
+                    auto PaintPlayerComponent = CurrentPawn->GetComponentByClass(FindObject<UClass>("/Buffet/Gameplay/Blueprints/WrapWorldPrototype/BP_Buffet_Paint_PlayerComponent.BP_Buffet_Paint_PlayerComponent_C"));
+
+                    CurrentPawn->ProcessEvent(CurrentPawn->FindFunction("K2_DestroyComponent"), &PaintMovementComponent);
+                    CurrentPawn->ProcessEvent(CurrentPawn->FindFunction("K2_DestroyComponent"), &PaintPlayerComponent);
                 }
             }
             if (Index == 4) // Storm King
@@ -396,7 +406,7 @@ void ActivatePhaseAtIndexHook(UObject* SpecialEventScript, int Index)
                     auto CurrentPawn = ClientConnections.At(i)->GetPlayerController()->GetPawn();
                     auto ComptoRemove = CurrentPawn->GetComponentByClass(FindObject<UClass>("/Buffet/Gameplay/Blueprints/Stars/BP_Buffet_Stars_PlayerComponent.BP_Buffet_Stars_PlayerComponent_C"));
 
-                    auto BubbleMovementComponent = CurrentPawn->AddComponentByClass(FindObject<UClass>("/Buffet/Gameplay/Blueprints/Bubble/BP_BubblePlayerMovementComponent.BP_BubblePlayerMovementComponent_C"));
+                    CurrentPawn->AddComponentByClass(FindObject<UClass>("/Buffet/Gameplay/Blueprints/Bubble/BP_BubblePlayerMovementComponent.BP_BubblePlayerMovementComponent_C"));
 
                     /*
                     struct
@@ -522,6 +532,29 @@ void AttemptFinishPhaseHook(AActor* SpecialEventScript, FGameplayTag PhaseTag)
     return AttemptFinishPhaseOriginal(SpecialEventScript, PhaseTag);
 }
 
+
+struct FRelevantPawnArray
+{
+    TArray<AFortPlayerPawn*> PlayerPawns;
+};
+void GetRelevantPawnGroupsHook(UObject* RelevancyMutator, TArray<FRelevantPawnArray>* RelevantPawns)
+{
+    LOG_INFO(LogEvent, "GetRelevantPawnGroups was called!");
+
+    FRelevantPawnArray PawnGroup;
+
+    auto ClientConnections = GetWorld()->GetNetDriver()->GetClientConnections();
+    for (int i = 0; i < ClientConnections.Num(); i++)
+    {
+        auto CurrentController = ClientConnections.At(i)->GetPlayerController();
+        auto CurrentPawn = Cast<AFortPlayerPawn>(CurrentController->GetPawn());
+
+        PawnGroup.PlayerPawns.Add(CurrentPawn);
+    }
+
+    RelevantPawns->Add(PawnGroup);
+}
+
 // Used to teleport the pawn in some events, not used in all parts of rift tour for some reason.
 static void (*TeleportPlayerPawnOriginal)(UObject* Context, FFrame& Stack, void* Ret);
 void TeleportPlayerPawnHook(UObject* Context, FFrame& Stack, void* Ret)
@@ -548,7 +581,6 @@ void TeleportPlayerPawnHook(UObject* Context, FFrame& Stack, void* Ret)
 }
 
 
-// Storm King Spawning, I might put this in its own class soon.
 bool bStormKingSpawned = false;
 static inline void (*DADBroOnGamephaseStepChangedOriginal)(UObject* Context, FFrame& Stack, void* Ret);
 void DADBroOnGamephaseStepChangedHook(UObject* Context, FFrame& Stack, void* Ret)
@@ -939,8 +971,8 @@ DWORD WINAPI Main(LPVOID)
     {
         if (Fortnite_Version >= 17.30)
         {
-            Hooking::MinHook::Hook(FindObject<UObject>("/Script/FortniteGame.Default__FortMissionLibrary"), FindObject<UFunction>(L"/Script/FortniteGame.FortMissionLibrary:TeleportPlayerPawn"), TeleportPlayerPawnHook,
-                (PVOID*)&TeleportPlayerPawnOriginal, false, true);
+            Hooking::MinHook::Hook(FindObject<UObject>("/Script/FortniteGame.Default__FortMissionLibrary"), FindObject<UFunction>(L"/Script/FortniteGame.FortMissionLibrary:TeleportPlayerPawn"), TeleportPlayerPawnHook, (PVOID*)&TeleportPlayerPawnOriginal, false, true);
+            //Hooking::MinHook::Hook((PVOID)(__int64(GetModuleHandleW(0)) + 0x49021F0), GetRelevantPawnGroupsHook, nullptr);
         }
         if (Fortnite_Version == 17.50)
         {
