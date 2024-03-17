@@ -1593,7 +1593,7 @@ DWORD WINAPI Main(LPVOID)
 
     srand(time(0));
 
-    LOG_INFO(LogHook, "Finished!");
+    LOG_INFO(LogHook, "Finished initialization!");
 
     if (false)
     {
