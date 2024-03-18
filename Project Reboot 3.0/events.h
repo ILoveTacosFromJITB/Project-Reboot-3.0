@@ -641,7 +641,7 @@ static inline void LoadEvent(bool* bWereAllSuccessful = nullptr) // did i forget
 	if (Fortnite_Version == 7.20)
 	{
 		static auto LoadMooneyMapOffset = Loader->GetOffset("LoadMooneyMap");
-		static auto OnRep_LoadMooneyMapFn = FindObject<UFunction>("/Game/Athena/Prototype/Blueprints/Mooney/BP_MooneyLoader.BP_MooneyLoader_C.OnRep_LoadMooneyMap");
+		static auto OnRep_LoadMooneyMapFn = FindObject<UFunction>(L"/Game/Athena/Prototype/Blueprints/Mooney/BP_MooneyLoader.BP_MooneyLoader_C.OnRep_LoadMooneyMap");
 		
 		if (LoadMooneyMapOffset == -1 || !OnRep_LoadMooneyMapFn)
 		{
