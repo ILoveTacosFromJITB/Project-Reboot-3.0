@@ -28,6 +28,7 @@
 #include "Fonts/ruda-bold.h"
 #include "Vector.h"
 #include "reboot.h"
+#include "botnames.h"
 #include "FortGameModeAthena.h"
 #include "UnrealString.h"
 #include "KismetTextLibrary.h"
@@ -35,6 +36,7 @@
 #include "GameplayStatics.h"
 #include "Text.h"
 #include <Images/reboot_icon.h>
+#include "hooking.h"
 #include "FortGadgetItemDefinition.h"
 #include "FortWeaponItemDefinition.h"
 #include "events.h"
@@ -118,6 +120,8 @@ static inline bool HasAnyCalendarModification()
 
 static inline void Restart() // todo move?
 {
+	InitBotNames();
+
 	FString LevelA = Engine_Version < 424
 		? L"open Athena_Terrain" : Engine_Version >= 500 ? Engine_Version >= 501
 		? L"open Asteria_Terrain"
@@ -325,10 +329,18 @@ static inline void StaticUI()
 
 	ImGui::InputInt("Shield/Health for siphon", &AmountOfHealthSiphon);
 
-#ifndef PROD
-	ImGui::Checkbox("Log ProcessEvent", &Globals::bLogProcessEvent);
+	ImGui::Checkbox("Enable Developer Mode", &Globals::bDeveloperMode);
+
+	if (Globals::bDeveloperMode)
+	{
+		if (ImGui::Checkbox("Log ProcessEvent", &Globals::bLogProcessEvent))
+		{
+			// todo toggle hook
+			Hooking::MinHook::Hook((PVOID)Addresses::ProcessEvent, ProcessEventHook, (PVOID*)&UObject::ProcessEventOriginal);
+		}
+	}
+
 	// ImGui::InputInt("Amount of bots to spawn", &AmountOfBotsToSpawn);
-#endif
 
 	ImGui::Checkbox("Infinite Ammo", &Globals::bInfiniteAmmo);
 	ImGui::Checkbox("Infinite Materials", &Globals::bInfiniteMaterials);
@@ -444,23 +456,24 @@ static inline void MainTabs()
 
 		// maybe a Replication Stats for >3.3?
 
-#ifndef PROD
-		if (ImGui::BeginTabItem("Developer"))
+		if (Globals::bDeveloperMode)
 		{
-			Tab = DEVELOPER_TAB;
-			PlayerTab = -1;
-			bInformationTab = false;
-			ImGui::EndTabItem();
-		}
+			if (ImGui::BeginTabItem("Developer"))
+			{
+				Tab = DEVELOPER_TAB;
+				PlayerTab = -1;
+				bInformationTab = false;
+				ImGui::EndTabItem();
+			}
 
-		if (ImGui::BeginTabItem("Debug Logs"))
-		{
-			Tab = DEBUGLOG_TAB;
-			PlayerTab = -1;
-			bInformationTab = false;
-			ImGui::EndTabItem();
+			if (ImGui::BeginTabItem("Debug Logs"))
+			{
+				Tab = DEBUGLOG_TAB;
+				PlayerTab = -1;
+				bInformationTab = false;
+				ImGui::EndTabItem();
+			}
 		}
-#endif
 
 		if (false && ImGui::BeginTabItem(("Credits")))
 		{
@@ -801,8 +814,9 @@ static inline void MainUI()
 				if (!bStartedBus)
 				{
 					if (Globals::bLateGame.load() 
-						|| Fortnite_Version >= 11 // Its been a minute but iirc it just wouldnt start when countdown ended or crash? cant remember
-						)
+						|| (Fortnite_Version >= 11 // Its been a minute but iirc it just wouldnt start when countdown ended or crash? cant remember
+						// && false
+						))
 					{
 						if (ImGui::Button("Start Bus"))
 						{

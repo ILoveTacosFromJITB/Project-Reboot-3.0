@@ -70,6 +70,9 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <TargetName>$(ProjectName)</TargetName>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -233,6 +236,7 @@
     <ClCompile Include="FortPlayerStateAthena.cpp" />
     <ClCompile Include="FortPlaysetItemDefinition.cpp" />
     <ClCompile Include="FortSafeZoneIndicator.cpp" />
+    <ClCompile Include="FortServerBotManagerAthena.cpp" />
     <ClCompile Include="FortWeapon.cpp" />
     <ClCompile Include="FortWeaponItemDefinition.cpp" />
     <ClCompile Include="FortWeaponRangedMountedCannon.cpp" />
@@ -273,6 +277,7 @@
     <ClInclude Include="ActorComponent.h" />
     <ClInclude Include="addresses.h" />
     <ClInclude Include="ai.h" />
+    <ClInclude Include="AIController.h" />
     <ClInclude Include="AndOrNot.h" />
     <ClInclude Include="anticheat.h" />
     <ClInclude Include="Array.h" />
@@ -288,6 +293,7 @@
     <ClInclude Include="BGA.h" />
     <ClInclude Include="BinaryHeap.h" />
     <ClInclude Include="BitArray.h" />
+    <ClInclude Include="botnames.h" />
     <ClInclude Include="bots.h" />
     <ClInclude Include="BP_IslandScripting.h" />
     <ClInclude Include="BuildingActor.h" />
@@ -327,6 +333,7 @@
     <ClInclude Include="FortAbilitySet.h" />
     <ClInclude Include="FortAIEncounterInfo.h" />
     <ClInclude Include="FortAthenaAIBotCharacterCustomization.h" />
+    <ClInclude Include="FortAthenaAIBotController.h" />
     <ClInclude Include="FortAthenaAIBotCustomizationData.h" />
     <ClInclude Include="FortAthenaAIBotSpawnerData.h" />
     <ClInclude Include="FortAthenaAISpawnerDataComponent_CosmeticLoadout.h" />
@@ -386,6 +393,7 @@
     <ClInclude Include="FortQuickBars.h" />
     <ClInclude Include="FortResourceItemDefinition.h" />
     <ClInclude Include="FortSafeZoneIndicator.h" />
+    <ClInclude Include="FortServerBotManagerAthena.h" />
     <ClInclude Include="FortVehicleItemDefinition.h" />
     <ClInclude Include="FortVolume.h" />
     <ClInclude Include="FortWeapon.h" />

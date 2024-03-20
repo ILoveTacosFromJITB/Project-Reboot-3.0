@@ -89,6 +89,8 @@ enum class EInteractionBeingAttempted : uint8
 	EInteractionBeingAttempted_MAX = 3,
 };
 
+using UAthenaSprayItemDefinition = UObject;
+
 class AFortPlayerController : public APlayerController
 {
 public:
@@ -188,6 +190,7 @@ public:
 	}
 
 	void ClientEquipItem(const FGuid& ItemGuid, bool bForceExecution);
+	void ClientForceCancelBuildingTool();
 
 	bool DoesBuildFree();
 	void DropAllItems(const std::vector<UFortItemDefinition*>& IgnoreItemDefs, bool bIgnoreSecondaryQuickbar = false, bool bRemoveIfNotDroppable = false, bool RemovePickaxe = false);
@@ -209,6 +212,7 @@ public:
 	static void ServerDropAllItemsHook(AFortPlayerController* PlayerController, UFortItemDefinition* IgnoreItemDef);
 
 	static void ServerAttemptInventoryDropHook(AFortPlayerController* PlayerController, FGuid ItemGuid, int Count);
+	static void ServerPlaySprayItemHook(AFortPlayerController* PlayerController, UAthenaSprayItemDefinition* SprayAsset);
 	static void ServerPlayEmoteItemHook(AFortPlayerController* PlayerController, UObject* EmoteAsset);
 	static void ClientOnPawnDiedHook(AFortPlayerController* PlayerController, void* DeathReport);
 

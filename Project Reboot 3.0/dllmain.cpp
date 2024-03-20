@@ -16,6 +16,7 @@
 #include "FortAthenaMutator_GiveItemsAtGamePhaseStep.h"
 #include "FortGameStateAthena.h"
 #include "BuildingGameplayActorSpawnMachine.h"
+#include "BuildingWeapons.h"
 
 #include "BuildingFoundation.h"
 #include "Map.h"
@@ -45,6 +46,8 @@
 #include "FortAthenaVehicleSpawner.h"
 #include "FortGameSessionDedicatedAthena.h"
 #include "FortAIEncounterInfo.h"
+#include "FortServerBotManagerAthena.h"
+#include "botnames.h"
 
 enum class EMeshNetworkNodeType : uint8_t
 {
@@ -868,7 +871,7 @@ DWORD WINAPI Main(LPVOID)
 #else
     if (Fortnite_Version > 20)
     {
-        MessageBoxA(0, "Please define ABOVE_S20", "Project Reboot 3.0", MB_ICONERROR);
+        MessageBoxA(0, "Please define ABOVE_S20 (compile it yourself and change inc.h)", "Project Reboot 3.0", MB_ICONERROR);
         return 0;
     }
 #endif
@@ -898,7 +901,7 @@ DWORD WINAPI Main(LPVOID)
     static auto FortOctopusVehicleDefault = FindObject<AFortOctopusVehicle>(L"/Script/FortniteGame.Default__FortOctopusVehicle");
     static auto FortPlayerControllerAthenaDefault = FindObject<AFortPlayerControllerAthena>(L"/Script/FortniteGame.Default__FortPlayerControllerAthena"); // FindObject<UClass>(L"/Game/Athena/Athena_PlayerController.Default__Athena_PlayerController_C");
 
-    if (Fortnite_Version >= 20)
+    if (Fortnite_Version >= 20 || Fortnite_Version == 12.00)
         ApplyNullAndRetTrues();
 
     // UKismetSystemLibrary::ExecuteConsoleCommand(GetWorld(), L"log LogNetPackageMap VeryVerbose", nullptr);
@@ -988,10 +991,14 @@ DWORD WINAPI Main(LPVOID)
     }
     */
 
+    if (Fortnite_Version >= 16 && Fortnite_Version < 19)
+    {
+        // Bus crash (only needed if we are calling StartAircraftPhase on seperate thread I THINK) (sometimes)
+        Hooking::MinHook::Hook(Memcury::Scanner::FindPattern("48 89 5C 24 ? 48 89 6C 24 ? 56 57 41 54 41 56 41 57 48 83 EC 40 48 8B 59 28 45 33 E4").GetAs<PVOID>(), (PVOID)EmptyHook); // also on 16.50
+    }
+
     if (Fortnite_Version == 17.30) // Rift Tour stuff
     {
-        auto busCrash = Hooking::MinHook::Hook(Memcury::Scanner::FindPattern("48 89 5C 24 ? 48 89 6C 24 ? 56 57 41 54 41 56 41 57 48 83 EC 40 48 8B 59 28 45 33 E4").GetAs<PVOID>(), (PVOID)EmptyHook);
-
         Hooking::MinHook::Hook((PVOID)(__int64(GetModuleHandleW(0)) + 0x3E07910), (PVOID)GetMeshNetworkNodeTypeHook, nullptr);
         Hooking::MinHook::Hook((PVOID)(__int64(GetModuleHandleW(0)) + 0x3DED158), (PVOID)ReturnTrueHook, nullptr); // 7FF7E556D158  
         Hooking::MinHook::Hook((PVOID)(__int64(GetModuleHandleW(0)) + 0x3DECFC8), (PVOID)ReturnTrueHook, nullptr); // 7FF7E556CFC8
@@ -1017,6 +1024,36 @@ DWORD WINAPI Main(LPVOID)
         Hooking::MinHook::Hook((PVOID)(__int64(GetModuleHandleW(0)) + 0x416A93C), (PVOID)ReturnTrueHook, nullptr); // 7FF79E3EA93C
         // Hooking::MinHook::Hook((PVOID)(__int64(GetModuleHandleW(0)) + ), (PVOID)ReturnFalseHook, nullptr);
         Hooking::MinHook::Hook((PVOID)(__int64(GetModuleHandleW(0)) + 0x41624C8), (PVOID)ActivatePhaseAtIndexHook, (PVOID*)&ActivatePhaseAtIndexOriginal); // 7FF79E3E24C8  
+    }
+
+    if (std::floor(Fortnite_Version) == 4)
+    {
+        auto RetrieveCharacterPartsAddr = Memcury::Scanner::FindPattern("48 89 5C 24 ? 57 48 83 EC 20 48 8B 01 0F B6 FA 48 8B D9 FF 90 ? ? ? ? 48 8B C8 E8 ? ? ? ? 84 C0 74 0D 33 C0 48 8B 5C 24 ? 48 83 C4 20 5F", false).Get();
+        
+        if (!RetrieveCharacterPartsAddr)
+            RetrieveCharacterPartsAddr = Memcury::Scanner::FindPattern("40 53 48 83 EC 20 48 8B 01 48 8B D9 FF 90 ? ? ? ? 48 8B C8 E8 ? ? ? ? 84 C0 74 08 33 C0 48 83 C4 20 5B C3 48 8B CB").Get(); // 4.0
+
+        LOG_INFO(LogDev, "RetrieveCharacterPartsAddr: {}", RetrieveCharacterPartsAddr);
+
+        if (RetrieveCharacterPartsAddr)
+        {
+            for (int i = 0; i < 400; i++)
+            {
+                if (*(uint8_t*)(RetrieveCharacterPartsAddr + i) == 0x74) // jz
+                {
+                    DWORD dwProtection;
+                    VirtualProtect((PVOID)(RetrieveCharacterPartsAddr + i), 1, PAGE_EXECUTE_READWRITE, &dwProtection);
+
+                    *(uint8_t*)(RetrieveCharacterPartsAddr + i) = 0x75; // jnz
+
+                    DWORD dwTemp;
+                    VirtualProtect((PVOID)(RetrieveCharacterPartsAddr + i), 1, dwProtection, &dwTemp);
+
+                    LOG_INFO(LogDev, "Applied RetrieveCharacterParts patch!");
+                    break;
+                }
+            }
+        }
     }
 
     if (Globals::bGoingToPlayEvent)
@@ -1049,7 +1086,7 @@ DWORD WINAPI Main(LPVOID)
 
     LOG_INFO(LogDev, "Switch levels.");
 
-    if (Fortnite_Version < 20)
+    if (Fortnite_Version < 20 && Fortnite_Version != 12)
         ApplyNullAndRetTrues();
 
     if (Fortnite_Version != 22.4)
@@ -1106,6 +1143,8 @@ DWORD WINAPI Main(LPVOID)
 
     // Globals::bAbilitiesEnabled = Engine_Version < 500;
 
+    InitBotNames();
+
     if (Engine_Version < 420)
     {
         auto ApplyHomebaseEffectsOnPlayerSetupAddr = Memcury::Scanner::FindPattern("40 55 53 57 41 54 41 56 41 57 48 8D 6C 24 ? 48 81 EC ? ? ? ? 48 8B 05 ? ? ? ? 48 33 C4 48 89 45 00 4C 8B").Get();
@@ -1121,6 +1160,9 @@ DWORD WINAPI Main(LPVOID)
         Hooking::MinHook::Hook(GameModeDefault, FindObject<UFunction>(L"/Script/FortniteGame.FortGameModeAthena.OnAircraftEnteredDropZone"), AFortGameModeAthena::OnAircraftEnteredDropZoneHook,
             (PVOID*)&AFortGameModeAthena::OnAircraftEnteredDropZoneOriginal, false, false, true, true);
     }
+
+    // Hooking::MinHook::Hook(FindObject<UFortServerBotManagerAthena>(L"/Script/FortniteGame.Default__FortServerBotManagerAthena"), FindObject<UFunction>(L"/Script/FortniteGame.FortServerBotManagerAthena.SpawnBot"),
+       // UFortServerBotManagerAthena::SpawnBotHook, (PVOID*)&UFortServerBotManagerAthena::SpawnBotOriginal, false);
 
     Hooking::MinHook::Hook(GameModeDefault, FindObject<UFunction>(L"/Script/Engine.GameModeBase.SpawnDefaultPawnFor"),
         AGameModeBase::SpawnDefaultPawnForHook, nullptr, false);
@@ -1157,6 +1199,26 @@ DWORD WINAPI Main(LPVOID)
             // ZoneServerRestartPlayer,
             AFortPlayerControllerAthena::ServerRestartPlayerHook,
             nullptr, false);
+    }
+
+    auto OnRep_EditActorFn = FindObject<UFunction>(L"/Script/FortniteGame.FortWeap_EditingTool.OnRep_EditActor");
+
+    if (OnRep_EditActorFn)
+    {
+        auto OnRep_EditActorExec = (uint64)OnRep_EditActorFn->GetFunc();
+        uint64 OnRep_EditActorOriginal = 0;
+
+        for (int i = 0; i < 400; i++)
+        {
+            if (*(uint8_t*)(OnRep_EditActorExec + i) == 0xE8 || *(uint8_t*)(OnRep_EditActorExec + i) == 0xE9)
+            {
+                OnRep_EditActorOriginal = Memcury::Scanner(OnRep_EditActorExec + i).RelativeOffset(1).Get();
+                break;
+            }
+        }
+
+        LOG_INFO(LogDev, "OnRep_EditActor Offset: 0x{:x}", OnRep_EditActorOriginal - __int64(GetModuleHandleW(0)));
+        AFortWeap_EditingTool::originalOnRep_EditActor = decltype(AFortWeap_EditingTool::originalOnRep_EditActor)(OnRep_EditActorOriginal);
     }
 
     static auto ServerReturnToMainMenuFn = FindObject<UFunction>(L"/Script/FortniteGame.FortPlayerController.ServerReturnToMainMenu");
@@ -1228,6 +1290,8 @@ DWORD WINAPI Main(LPVOID)
        AFortPlayerController::ServerExecuteInventoryItemHook, nullptr, false);
     Hooking::MinHook::Hook(FortPlayerControllerAthenaDefault, FindObject<UFunction>(L"/Script/FortniteGame.FortPlayerController.ServerPlayEmoteItem"),
        AFortPlayerController::ServerPlayEmoteItemHook, nullptr, false);
+    Hooking::MinHook::Hook(FortPlayerControllerAthenaDefault, FindObject<UFunction>(L"/Script/FortniteGame.FortPlayerController.ServerPlaySprayItem"),
+        AFortPlayerController::ServerPlaySprayItemHook, nullptr, false); // S4 explain yourself
     Hooking::MinHook::Hook(FortPlayerControllerAthenaDefault, FindObject<UFunction>(L"/Script/FortniteGame.FortPlayerController.ServerRepairBuildingActor"),
         AFortPlayerController::ServerRepairBuildingActorHook, nullptr, false);
     Hooking::MinHook::Hook(FortPlayerControllerAthenaDefault, FindObject<UFunction>(L"/Script/FortniteGame.FortPlayerController.ServerCreateBuildingActor"), 
@@ -1554,10 +1618,6 @@ DWORD WINAPI Main(LPVOID)
     // if (Fortnite_Version >= 13)
     Hooking::MinHook::Hook((PVOID)Addresses::SetZoneToIndex, (PVOID)SetZoneToIndexHook, (PVOID*)&SetZoneToIndexOriginal);
     Hooking::MinHook::Hook((PVOID)Addresses::EnterAircraft, (PVOID)AFortPlayerControllerAthena::EnterAircraftHook, (PVOID*)&AFortPlayerControllerAthena::EnterAircraftOriginal);
-
-#ifndef PROD
-    Hooking::MinHook::Hook((PVOID)Addresses::ProcessEvent, ProcessEventHook, (PVOID*)&UObject::ProcessEventOriginal);
-#endif
 
     AddVehicleHook();
 

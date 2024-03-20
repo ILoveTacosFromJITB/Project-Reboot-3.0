@@ -515,9 +515,9 @@ static inline uint64 FindFree()
 {
 	uint64 addr = 0;
 
-	if (Fortnite_Version <= 3.3) // todo check 3.4
+	if (Engine_Version <= 420) // 3.3, 4.1, 4.5
 		addr = Memcury::Scanner::FindPattern("48 85 C9 74 1D 4C 8B 05 ? ? ? ? 4D 85 C0 0F 84").Get();
-	else if (Engine_Version >= 420 && Engine_Version <= 426)
+	else if (Engine_Version >= 421 && Engine_Version <= 426)
 		addr = Memcury::Scanner::FindPattern("48 85 C9 74 2E 53 48 83 EC 20 48 8B D9").Get();
 	else if (Engine_Version >= 427)
 		addr = Memcury::Scanner::FindPattern("48 85 C9 0F 84 ? ? ? ? 53 48 83 EC 20 48 89 7C 24 ? 48 8B D9 48 8B 3D").Get();
@@ -585,8 +585,10 @@ static inline uint64 FindSetWorld()
 		SetWorldIndex = 0x73;
 	else if (Fortnite_Season >= 19 && Fortnite_Season < 21)
 		SetWorldIndex = 0x7A;
-	if (Fortnite_Version == 20.40)
+	if (Fortnite_Season == 20) // 20.40
 		SetWorldIndex = 0x7B;
+	if (Fortnite_Season == 21)
+		SetWorldIndex = 0x7C; // 21.00
 
 	// static auto DefaultNetDriver = FindObject("/Script/Engine.Default__NetDriver");
 	return SetWorldIndex;
@@ -606,6 +608,9 @@ static inline uint64 FindInitListen()
 
 static inline uint64 FindOnDamageServer()
 {
+	if (Fortnite_Version >= 20) // 8B 15 on name ref???
+		return Memcury::Scanner::FindPattern("E8 ? ? ? ? 41 39 B4 24").RelativeOffset(1).Get(); // 20.40 (not 21.00)
+
 	auto Addr = FindFunctionCall(L"OnDamageServer", 
 		Engine_Version == 416 ? std::vector<uint8_t>{ 0x4C, 0x89, 0x4C } : 
 		Engine_Version == 419 || Engine_Version >= 427 ? std::vector<uint8_t>{ 0x48, 0x8B, 0xC4 } : std::vector<uint8_t>{ 0x40, 0x55 }
@@ -1533,8 +1538,8 @@ static inline uint64 FindGetNetMode()
 
 static inline uint64 FindApplyCharacterCustomization()
 {
-	if (std::floor(Fortnite_Version) == 4) // RetrieveCharacterParts return null if dedicated server?????
-		return 0;
+	// if (std::floor(Fortnite_Version) == 4) // RetrieveCharacterParts return null if dedicated server?????
+		// return 0;
 
 	auto Addrr = Memcury::Scanner::FindStringRef(L"AFortPlayerState::ApplyCharacterCustomization - Failed initialization, using default parts. Player Controller: %s PlayerState: %s, HeroId: %s", false, 0, Fortnite_Version >= 20, true).Get();
 
