@@ -344,6 +344,8 @@ static inline void StaticUI()
 
 	ImGui::Checkbox("Infinite Ammo", &Globals::bInfiniteAmmo);
 	ImGui::Checkbox("Infinite Materials", &Globals::bInfiniteMaterials);
+	
+	ImGui::Checkbox("Private IP's are operator", &Globals::bPrivateIPsAreOperator);
 
 	ImGui::Checkbox("No MCP (Don't change unless you know what this is)", &Globals::bNoMCP);
 

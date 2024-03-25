@@ -6,6 +6,7 @@
 #include "discord.h"
 #include "log.h"
 
+
 inline std::vector<FString> PlayerBotNames;
 
 static inline void InitBotNames()

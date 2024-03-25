@@ -294,7 +294,8 @@ public:
 			Controller->Possess(Pawn);
 		}
 
-		auto BotNewName = GetRandomName();
+		FString BotNewName = GetRandomName();
+		
 		LOG_INFO(LogBots, "BotNewName: {}", BotNewName.ToString());
 		SetName(BotNewName);
 
